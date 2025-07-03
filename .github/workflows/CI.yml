@@ -173,7 +173,9 @@ jobs:
           echo "ADD rttys_\$TARGETARCH\$TARGETVARIANT /usr/bin/rttys" >> /opt/bin/Dockerfile
           echo "RUN apk add --no-cache tzdata && chmod +x /usr/bin/rttys" >> /opt/bin/Dockerfile
           echo 'WORKDIR /app'  >> /opt/bin/Dockerfile
+          echo "VOLUME /app" >> /opt/bin/Dockerfile
           echo "ENV TZ=Asia/Shanghai" >> /opt/bin/Dockerfile
+          echo "EXPOSE 11211/tcp" >> /opt/bin/Dockerfile
           echo 'ENTRYPOINT ["/usr/bin/rttys"]' >> /opt/bin/Dockerfile
           mv $(find /opt/bin -type f -name "rttys-linux-x86") /opt/bin/rttys_amd64
           mv $(find /opt/bin -type f -name "rttys-linux-i386") /opt/bin/rttys_386
