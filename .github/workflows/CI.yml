@@ -195,23 +195,23 @@ jobs:
       - name: 下载镜像
         run: |
           mkdir -p /opt/dk
-          docker pull --platform linux/amd64 ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
-          docker save -o /opt/dk/rttys-x86_64-docker.tar ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker pull --platform linux/amd64 ghcr.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker save -o /opt/dk/rttys-x86_64-docker.tar ghcr.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
 
-          docker pull --platform linux/386 ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
-          docker save -o /opt/dk/rttys-386-docker.tar ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker pull --platform linux/386 ghcr.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker save -o /opt/dk/rttys-386-docker.tar ghcr.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
 
-          docker pull --platform linux/arm64 ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
-          docker save -o /opt/dk/rttys-arm64-docker.tar ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker pull --platform linux/arm64 ghcr.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker save -o /opt/dk/rttys-arm64-docker.tar ghcr.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
 
-          docker pull --platform linux/arm/v7 ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
-          docker save -o /opt/dk/rttys-armv7-docker.tar ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker pull --platform linux/arm/v7 ghcr.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker save -o /opt/dk/rttys-armv7-docker.tar ghcr.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
 
-          docker pull --platform linux/arm/v6 ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
-          docker save -o /opt/dk/rttys-armv5-docker.tar ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker pull --platform linux/arm/v6 ghcr.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker save -o /opt/dk/rttys-armv5-docker.tar ghcr.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
 
-          docker pull --platform linux/s390x ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
-          docker save -o /opt/dk/rttys-s390x-docker.tar ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker pull --platform linux/s390x ghcr.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker save -o /opt/dk/rttys-s390x-docker.tar ghcr.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
           
           echo "build_time=$(TZ=UTC-8 date '+%Y年%m月%d日%H:%M:%S' | jq -sRr @uri)" >> $GITHUB_ENV
       - name: 发布 
