@@ -26,7 +26,7 @@ rttys -h
 
 - CMD
 
-`docker run --name rttys -p 5913:5913 restart=always -d ghcr.io/lmq8267/rttys run`
+`docker run --name rttys -p 5913:5913 -e TZ=Asia/Shanghai restart=always -d ghcr.io/lmq8267/rttys run`
 
 - compose.yaml
 
@@ -38,6 +38,8 @@ services:
     container_name: rttys
     ports:
       - "5913:5913"        # 映射主机5913端口到容器
+    environment:
+      - TZ=Asia/Shanghai   # 设置容器时区
     volumes:
       - "/你外部文件夹:/app" #挂载主机文件夹到容器的/app目录 用来保存db数据库
     restart: always        # 自动重启策略
