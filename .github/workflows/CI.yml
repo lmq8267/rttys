@@ -222,8 +222,8 @@ jobs:
            > ### ![](https://img.shields.io/badge/%E7%BC%96%E8%AF%91%E6%97%B6%E9%97%B4-${{ env.build_time }}-8267?logo=github&labelColor=%E9%A1%BB)![](https://img.shields.io/github/downloads/${{ github.repository }}/${{ needs.check.outputs.ver }}/total?label=%E4%B8%8B%E8%BD%BD%E6%AC%A1%E6%95%B0&logo=github) 
 
            **[官方更新说明](https://github.com/zhaojh329/rttys/releases)**
-
-           [客户端程序下载](https://github.com/lmq8267/rtty/releases)
+           
+            [客户端程序下载](https://github.com/lmq8267/rtty/releases)
            
           tag_name: ${{ needs.check.outputs.ver }}
           files: /opt/dk/*
