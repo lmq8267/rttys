@@ -1,0 +1,268 @@
+name: 编译rttys
+
+on:
+  schedule:
+    - cron: '0 3,20 * * *'
+  workflow_dispatch:
+env:
+  TZ: Asia/Shanghai
+
+permissions:
+  contents: write
+  actions: write
+  packages: write 
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      ver: ${{ steps.getversion.outputs.ver }}
+      cver: ${{ steps.getversion.outputs.cver }}
+    steps:
+      - name: Get version
+        id: getversion
+        run: |
+          ver=`curl https://api.github.com/repos/zhaojh329/rttys/releases/latest | jq -r '.tag_name'`
+          cver=`curl https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name'`
+          echo "ver=${ver}" >> $GITHUB_OUTPUT
+          echo "cver=${cver}" >> $GITHUB_OUTPUT
+      - name: delete-workflow
+        uses: Mattraks/delete-workflow-runs@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          retain_days: 0
+          keep_minimum_runs: 0
+
+  build:
+    name: rttys-${{ matrix.NAME }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - GOARCH: arm64
+            GOOS: linux
+            NAME: linux-aarch64
+          - GOARCH: arm
+            GOARM: 7
+            GOOS: linux
+            NAME: linux-arm7
+          - GOARCH: arm
+            GOARM: 6
+            NAME: linux-arm6
+            GOOS: linux
+          - GOARCH: arm
+            GOARM: 5
+            GOOS: linux
+            NAME: linux-arm5
+          - GOARCH: arm
+            GOOS: linux
+            NAME: linux-arm
+          - GOARCH: mipsle
+            GOMIPS: softfloat
+            GOOS: linux
+            NAME: linux-mipsel
+          - GOARCH: mips
+            GOMIPS: softfloat
+            GOOS: linux
+            NAME: linux-mips
+          - GOARCH: s390x
+            GOOS: linux
+            NAME: linux-s390x
+          - GOARCH: amd64
+            GOOS: linux
+            NAME: linux-x86
+          - GOARCH: 386
+            GOOS: linux
+            NAME: linux-i386
+          - GOARCH: amd64
+            GOOS: freebsd
+            NAME: freebsd-x86
+    runs-on: ubuntu-latest
+    needs: check
+    if: ${{ needs.check.outputs.ver != needs.check.outputs.cver }}
+    env:
+      GOarch: ${{ matrix.GOARCH }}
+      GOos: ${{ matrix.GOOS }}
+      GOarm: ${{ matrix.GOARM }}
+      GOmips: ${{ matrix.GOMIPS }}
+      NAME: ${{ matrix.NAME }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: zhaojh329/rttys
+          ref: ${{ needs.check.outputs.ver }}
+          submodules: 'true'
+      - name: 获取最新Go
+        run: |
+          latest_version=$(curl -L -k -s https://golang.org/dl/?mode=json | grep -m 1 -o '"version": "[^"]*' | sed 's/"version": "//' | tr -d 'go" ')
+          echo "go版本=$latest_version"
+          echo "gotag=$latest_version" >> $GITHUB_ENV
+      - name: 安装go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.gotag }}
+      - name: 安装 UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          version: v4.2.4
+          install-only: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: ui
+        run: |
+          cd ui
+          npm install
+          npm run build
+          cd ..
+      - name: 编译
+        run: |
+          mkdir -p /opt/bin
+          sudo timedatectl set-timezone "Asia/Shanghai"
+          VersionPath="rttys/version"
+          GitCommit=$(git log --pretty=format:"%h" -1)
+          BuildTime=$(date +%FT%T%z)
+          export CGO_ENABLED=0
+          export GOOS=$GOos
+          export GOARCH=$GOarch
+          export GOARM=$GOarm
+          export GOMIPS=$GOmips
+          go build -o "/opt/bin/rttys-${NAME}" -trimpath -ldflags="-s -w -X $VersionPath.gitCommit=$GitCommit -X $VersionPath.buildTime=$BuildTime"
+          
+          if [ "${GOos}" != "freebsd" ] && [ "${GOarch}" != "s390x" ]; then
+             upx --lzma --best /opt/bin/rttys-${NAME}
+          fi
+          echo "build_time=$(TZ=UTC-8 date '+%Y年%m月%d日%H:%M:%S' | jq -sRr @uri)" >> $GITHUB_ENV
+      
+      - name: 发布 
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+           > ### ![](https://img.shields.io/badge/%E7%BC%96%E8%AF%91%E6%97%B6%E9%97%B4-${{ env.build_time }}-8267?logo=github&labelColor=%E9%A1%BB)![](https://img.shields.io/github/downloads/${{ github.repository }}/${{ needs.check.outputs.ver }}/total?label=%E4%B8%8B%E8%BD%BD%E6%AC%A1%E6%95%B0&logo=github) 
+
+           **[官方更新说明](https://github.com/zhaojh329/rttys/releases)**
+           
+          tag_name: ${{ needs.check.outputs.ver }}
+          files: /opt/bin/*
+      - name: 上传
+        uses: actions/upload-artifact@v4
+        with:
+          name: rttys-${{ matrix.NAME }}
+          path: /opt/bin/
+
+  docker:
+    needs: [build,check]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载
+        uses: actions/download-artifact@v4
+        with:
+          path: /opt/bin/
+      #- name: 登录dockerhub镜像仓库
+        #uses: docker/login-action@v3
+        #with:
+          #registry: docker.io
+          #username: ${{ github.repository_owner }}
+          #password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: 登录github镜像仓库
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: 生成Dockerfile
+        run: |
+          echo "FROM alpine:latest" > /opt/bin/Dockerfile
+          echo "ARG TARGETARCH" >> /opt/bin/Dockerfile
+          echo "ARG TARGETVARIANT" >> /opt/bin/Dockerfile
+          echo "ADD rttys_\$TARGETARCH\$TARGETVARIANT /usr/bin/rttys" >> /opt/bin/Dockerfile
+          echo "RUN apk add --no-cache tzdata && chmod +x /usr/bin/rttys" >> /opt/bin/Dockerfile
+          echo 'WORKDIR /app'  >> /opt/bin/Dockerfile
+          echo "ENV TZ=Asia/Shanghai" >> /opt/bin/Dockerfile
+          echo 'ENTRYPOINT ["/usr/bin/rttys"]' >> /opt/bin/Dockerfile
+          mv $(find /opt/bin -type f -name "rttys-linux-x86") /opt/bin/rttys_amd64
+          mv $(find /opt/bin -type f -name "rttys-linux-i386") /opt/bin/rttys_386
+          mv $(find /opt/bin -type f -name "rttys-linux-aarch64") /opt/bin/rttys_arm64
+          mv $(find /opt/bin -type f -name "rttys-linux-arm7") /opt/bin/rttys_armv7
+          mv $(find /opt/bin -type f -name "rttys-linux-arm6") /opt/bin/rttys_armv6
+          mv $(find /opt/bin -type f -name "rttys-linux-s390x") /opt/bin/rttys_s390x
+      - name: 设置Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: 构建并推送
+        uses: docker/build-push-action@v5
+        with:
+         push: true
+         tags: |
+          #docker.io/${{ github.repository_owner }}/rttys:latest
+          #docker.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          ghcr.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          ghcr.io/${{ github.repository_owner }}/rttys:latest
+         platforms: linux/amd64,linux/386,linux/arm64,linux/arm/v7,linux/arm/v6,linux/s390x
+         context: /opt/bin
+      - name: 下载镜像
+        run: |
+          mkdir -p /opt/dk
+          docker pull --platform linux/amd64 ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker save -o /opt/dk/rttys-x86_64-docker.tar ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+
+          docker pull --platform linux/386 ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker save -o /opt/dk/rttys-386-docker.tar ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+
+          docker pull --platform linux/arm64 ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker save -o /opt/dk/rttys-arm64-docker.tar ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+
+          docker pull --platform linux/arm/v7 ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker save -o /opt/dk/rttys-armv7-docker.tar ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+
+          docker pull --platform linux/arm/v6 ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker save -o /opt/dk/rttys-armv5-docker.tar ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+
+          docker pull --platform linux/s390x ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          docker save -o /opt/dk/rttys-s390x-docker.tar ${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
+          
+          echo "build_time=$(TZ=UTC-8 date '+%Y年%m月%d日%H:%M:%S' | jq -sRr @uri)" >> $GITHUB_ENV
+      - name: 发布 
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+           > ### ![](https://img.shields.io/badge/%E7%BC%96%E8%AF%91%E6%97%B6%E9%97%B4-${{ env.build_time }}-8267?logo=github&labelColor=%E9%A1%BB)![](https://img.shields.io/github/downloads/${{ github.repository }}/${{ needs.check.outputs.ver }}/total?label=%E4%B8%8B%E8%BD%BD%E6%AC%A1%E6%95%B0&logo=github) 
+
+           **[官方更新说明](https://github.com/zhaojh329/rttys/releases)**
+           
+          tag_name: ${{ needs.check.outputs.ver }}
+          files: /opt/dk/*
+     
+  keepalive-workflow:
+    # github超过60天未提交将自动停止工作流
+    name: 工作流保活 
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      #- uses: gautamkrishnar/keepalive-workflow@v2
+        #with:
+          #use_api: true
+      - name: 检查上次提交日期
+        id: check_commit_date
+        run: |
+          # 获取上次提交日期（格式：YYYY-MM-DD）
+          LAST_COMMIT_DATE=$(git log -1 --format=%cd --date=short)
+          echo "上次提交日期: $LAST_COMMIT_DATE"
+          # 计算当前日期和上次提交日期的差值（单位：天）
+          LAST_COMMIT_TIMESTAMP=$(date -d "$LAST_COMMIT_DATE" +%s)
+          CURRENT_TIMESTAMP=$(date +%s)
+          DIFF_DAYS=$(( (CURRENT_TIMESTAMP - LAST_COMMIT_TIMESTAMP) / 86400 ))
+          echo "距离上次提交以来的天数: $DIFF_DAYS"
+          echo "diff_days=$DIFF_DAYS" >> $GITHUB_ENV
+      - name: 执行空提交
+        if: ${{ env.diff_days > 50 }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # 创建空提交
+          git commit --allow-empty -m "自动空提交，保持仓库活跃"
+          git push
