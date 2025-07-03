@@ -56,14 +56,14 @@ jobs:
           - GOARCH: arm
             GOOS: linux
             NAME: linux-arm
-          - GOARCH: mipsle
-            GOMIPS: softfloat
-            GOOS: linux
-            NAME: linux-mipsel
-          - GOARCH: mips
-            GOMIPS: softfloat
-            GOOS: linux
-            NAME: linux-mips
+          #- GOARCH: mipsle
+            #GOMIPS: softfloat
+            #GOOS: linux
+            #NAME: linux-mipsel
+          #- GOARCH: mips
+            #GOMIPS: softfloat
+            #GOOS: linux
+            #NAME: linux-mips
           - GOARCH: s390x
             GOOS: linux
             NAME: linux-s390x
