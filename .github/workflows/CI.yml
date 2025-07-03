@@ -159,12 +159,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: /opt/bin/
-      #- name: 登录dockerhub镜像仓库
-        #uses: docker/login-action@v3
-        #with:
-          #registry: docker.io
-          #username: ${{ github.repository_owner }}
-          #password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: 登录github镜像仓库
         uses: docker/login-action@v3
         with:
@@ -194,8 +188,6 @@ jobs:
         with:
          push: true
          tags: |
-          #docker.io/${{ github.repository_owner }}/rttys:latest
-          #docker.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
           ghcr.io/${{ github.repository_owner }}/rttys:${{ needs.check.outputs.ver }}
           ghcr.io/${{ github.repository_owner }}/rttys:latest
          platforms: linux/amd64,linux/386,linux/arm64,linux/arm/v7,linux/arm/v6,linux/s390x
