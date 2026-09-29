@@ -87,7 +87,7 @@ jobs:
       NAME: ${{ matrix.NAME }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@main
         with:
           repository: zhaojh329/rttys
           ref: ${{ needs.check.outputs.ver }}
@@ -119,7 +119,7 @@ jobs:
         run: |
           mkdir -p /opt/bin
           sudo timedatectl set-timezone "Asia/Shanghai"
-          VersionPath="rttys/version"
+          VERSION=$(grep 'const RttysVersion' cmd/rttys/main.go | cut -d'"' -f2 | sed 's/^v//')
           GitCommit=$(git log --pretty=format:"%h" -1)
           BuildTime=$(date +%FT%T%z)
           export CGO_ENABLED=0
@@ -127,7 +127,7 @@ jobs:
           export GOARCH=$GOarch
           export GOARM=$GOarm
           export GOMIPS=$GOmips
-          go build -o "/opt/bin/rttys-${NAME}" -trimpath -ldflags="-s -w -X $VersionPath.gitCommit=$GitCommit -X $VersionPath.buildTime=$BuildTime"
+          go build -o "/opt/bin/rttys-${NAME}" -trimpath -ldflags="-s -w -X main.gitCommit=$GitCommit -X main.buildTime=$BuildTime" ./cmd/rttys
           
           if [ "${GOos}" != "freebsd" ] && [ "${GOarch}" != "s390x" ]; then
              upx --lzma --best /opt/bin/rttys-${NAME}
@@ -135,7 +135,7 @@ jobs:
           echo "build_time=$(TZ=UTC-8 date '+%Y年%m月%d日%H:%M:%S' | jq -sRr @uri)" >> $GITHUB_ENV
       
       - name: 发布 
-        uses: softprops/action-gh-release@v2
+        uses: lmq8267/action-gh-release@master
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           body: |
